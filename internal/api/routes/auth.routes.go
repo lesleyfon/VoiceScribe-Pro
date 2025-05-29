@@ -1,9 +1,12 @@
 package routes
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"voicescribe-pro/internal/api/handlers"
 
+	"github.com/gofiber/fiber/v3"
+)
+
+// TODO: WE DO NOT NEED THIS SINCE WE ARE USING CLERK FOR AUTH
 func AuthRoutes(app *fiber.App) {
-	app.Post("/login", func(c fiber.Ctx) error {
-		return c.SendString("Hello, World 👋!")
-	})
+	app.Post("/authenticate", handlers.Authenticate)
 }
