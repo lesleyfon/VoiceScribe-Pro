@@ -37,5 +37,5 @@ func Authenticate(c fiber.Ctx) error {
 	}
 
 	fmt.Printf(`{"user_id": "%s", "user_banned": "%t"}`, usr.ID, usr.Banned)
-	return nil
+	return c.Next()
 }
