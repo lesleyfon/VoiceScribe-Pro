@@ -1,38 +1,53 @@
 package main
 
 import (
-	"voicescribe-pro/internal/api/handlers"
+	"fmt"
+	"log"
+	"strings"
+	"voicescribe-pro/internal/api/middlewares"
 	"voicescribe-pro/internal/api/routes"
 
-	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading env variables")
+	}
 	app := fiber.New()
 
-	var AllowOrigins = []string{"https://www.hello.com"}
+	var AllowOrigins = strings.Join([]string{"http://localhost:3000"}, ",")
+	fmt.Println(AllowOrigins)
+	var AllowHeaders = strings.Join([]string{"Origin, Content-Type, Accept, Authorization"}, ",")
+	var AllowMethods = strings.Join([]string{fiber.MethodGet, fiber.MethodPost}, ",")
 
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
 		AllowOrigins:     AllowOrigins, // URL for FE
-		AllowHeaders:     []string{"Origin, Content-Type, Accept"},
-		AllowMethods:     []string{fiber.MethodGet, fiber.MethodPost}, // REST Methods allowed
-		MaxAge:           3600,                                        // How long a preflight request should be cached for
+		AllowHeaders:     AllowHeaders,
+		AllowMethods:     AllowMethods, // REST Methods allowed
+		MaxAge:           3600,         // How long a preflight request should be cached for
 
 	}))
-	app.Get("/unprotected", func(c fiber.Ctx) error {
-		return c.JSON(map[string]string{
+	app.Get("/unprotected", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
 			"message": "Welcome to the unprotected route",
 		})
 	})
-	app.Use(handlers.Authenticate)
-	app.Get("/welcome", func(c fiber.Ctx) error {
-		return c.JSON(map[string]string{
+	app.Use(middlewares.Authenticate())
+
+	app.Get("/welcome", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
 			"message": "Welcome to the home route",
 		})
 	})
-	routes.AuthRoutes(app)
+	routes.UserRoutes(app)
 
-	app.Listen(":3000")
+	// Add fallback routes
+
+	app.Listen(":8000")
+
 }
