@@ -9,6 +9,7 @@ export default function Nav() {
 	const router = useRouter();
 
 	useEffect(() => {
+		// TODO: delete me
 		const getData = async () => {
 			try {
 				const token = await getToken();
