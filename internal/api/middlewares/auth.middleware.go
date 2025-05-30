@@ -163,6 +163,7 @@ func Authenticate() fiber.Handler {
 		}
 
 		if claims == nil {
+			log.Println("Claims are nil")
 			return c.Status(http.StatusUnauthorized).JSON(ErrMissingToken)
 		}
 
