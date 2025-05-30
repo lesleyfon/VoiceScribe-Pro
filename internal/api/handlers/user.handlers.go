@@ -16,3 +16,15 @@ func GetUserClaims(c *fiber.Ctx) (*clerk.SessionClaims, bool) {
 	claims, ok := c.Locals("userClaims").(*clerk.SessionClaims)
 	return claims, ok
 }
+
+func GetUserClaimsHandler(c *fiber.Ctx) error {
+	userID, ok := GetUserID(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	return c.JSON(fiber.Map{
+		"user_id": userID,
+	})
+}
