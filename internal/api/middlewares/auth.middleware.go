@@ -159,10 +159,11 @@ func Authenticate() fiber.Handler {
 				"path":  c.Path(),
 				"ip":    c.IP(),
 			})
-			return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
-				"status":  http.StatusUnauthorized,
-				"message": "Invalid session",
-			})
+			return c.Status(http.StatusUnauthorized).JSON(ErrInvalidToken)
+		}
+
+		if claims == nil {
+			return c.Status(http.StatusUnauthorized).JSON(ErrMissingToken)
 		}
 
 		c.Locals("userId", claims.Subject)
