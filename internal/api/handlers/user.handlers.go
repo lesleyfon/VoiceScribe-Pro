@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -85,6 +86,34 @@ func newResponseRecorder() *responseRecorder {
 	}
 }
 
+func validateToken(req *http.Request) (*clerk.SessionClaims, error) {
+
+	recorder := newResponseRecorder()
+	var claims *clerk.SessionClaims
+	var validationErr error
+
+	httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		extractedClaims, ok := clerk.SessionClaimsFromContext(r.Context())
+
+		if !ok || extractedClaims == nil {
+			validationErr = errors.New("failed to extract session claims")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		claims = extractedClaims
+	})
+
+	clerkHandler := clerkhttp.WithHeaderAuthorization()(httpHandler)
+	clerkHandler.ServeHTTP(recorder, req)
+
+	log.Println("Recorder status code", recorder.statusCode)
+	log.Println("Recorder status code is not OK", validationErr)
+	if recorder.statusCode != http.StatusOK {
+		return nil, validationErr
+	}
+	return claims, nil
+}
+
 // Header returns the header map for setting HTTP headers
 func (r *responseRecorder) Header() http.Header {
 	return r.headers
@@ -115,45 +144,35 @@ func Authenticate() fiber.Handler {
 			return c.Status(http.StatusInternalServerError).JSON(ErrInternalError)
 		}
 
-		authHeader := extractAuthToken(c)
-		if authHeader == "" {
+		authToken := extractAuthToken(c)
+		if authToken == "" {
 			return c.Status(http.StatusUnauthorized).JSON(ErrMissingToken)
 		}
 
 		// Set the Authorization header in the request
-		httpReq.Header.Set("Authorization", authHeader)
+		httpReq.Header.Set("Authorization", authToken)
+		claims, err := validateToken(httpReq)
 
-		// Create a new response recorder
-		recorder := newResponseRecorder()
-		httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := clerk.SessionClaimsFromContext(r.Context())
-
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			if claims != nil {
-				c.Locals("userId", claims.Subject)
-				c.Locals("userClaims", claims)
-
-				log.Println("Authentication successful", fiber.Map{
-					"user_id":  claims.Subject,
-					"path":     c.Path(),
-					"duration": time.Since(start),
-				})
-			}
-		})
-
-		clerkHandler := clerkhttp.WithHeaderAuthorization()(httpHandler)
-		clerkHandler.ServeHTTP(recorder, httpReq)
-
-		if recorder.statusCode != http.StatusOK {
-			return c.Status(recorder.statusCode).JSON(fiber.Map{
-				"status":  recorder.statusCode,
+		if err != nil {
+			log.Println("Token validation failed", fiber.Map{
+				"error": err,
+				"path":  c.Path(),
+				"ip":    c.IP(),
+			})
+			return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
+				"status":  http.StatusUnauthorized,
 				"message": "Invalid session",
 			})
 		}
+
+		c.Locals("userId", claims.Subject)
+		c.Locals("userClaims", claims)
+
+		log.Println("Authentication successful", fiber.Map{
+			"user_id":  claims.Subject,
+			"path":     c.Path(),
+			"duration": time.Since(start),
+		})
 
 		return c.Next()
 	}
