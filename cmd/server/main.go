@@ -34,6 +34,12 @@ func main() {
 
 	}))
 
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status": "healthy",
+		})
+	})
+
 	app.Use(middlewares.Authenticate())
 
 	// Routes
