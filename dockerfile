@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # Install air for hot reloading in development
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.62.0
 
 # Expose the application port
 EXPOSE 8000
