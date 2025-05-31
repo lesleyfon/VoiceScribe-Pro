@@ -86,6 +86,21 @@ graph TD
   ```sh
   make clean
   ```
+  **Note:**  
+This project's Dockerfile uses advanced cache mounts (`--mount=type=cache`), which require [Docker BuildKit](https://docs.docker.com/build/buildkit/).  
+Make sure BuildKit is enabled when building images:
+
+```sh
+DOCKER_BUILDKIT=1 docker build -t voicescribe-pro .
+```
+
+Or, for all Docker builds, you can export:
+
+```sh
+export DOCKER_BUILDKIT=1
+```
+
+If you use the provided `Makefile`, BuildKit will be required for the `make build` and `make dev` commands.
 
 ### Frontend (Next.js 15 + TailwindCSS)
 - **Main Tech:** [Next.js 15](https://nextjs.org/), React 19, TailwindCSS 4, Clerk Auth, Radix UI
@@ -115,6 +130,8 @@ npm run build && npm start
 # or
 yarn build && yarn start
 ```
+
+
 
 ---
 
