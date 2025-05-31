@@ -24,6 +24,7 @@ func main() {
 	var AllowHeaders = strings.Join([]string{"Origin, Content-Type, Accept, Authorization"}, ",")
 	var AllowMethods = strings.Join([]string{fiber.MethodGet, fiber.MethodPost}, ",")
 
+	// Middlewares
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
 		AllowOrigins:     AllowOrigins, // URL for FE
@@ -32,21 +33,20 @@ func main() {
 		MaxAge:           3600,         // How long a preflight request should be cached for
 
 	}))
-	app.Get("/unprotected", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Welcome to the unprotected route",
-		})
-	})
+
 	app.Use(middlewares.Authenticate())
 
-	app.Get("/welcome", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Welcome to the home route",
-		})
-	})
+	// Routes
 	routes.UserRoutes(app)
 
 	// Add fallback routes
+	app.Use(func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  fiber.StatusNotFound,
+			"message": "Route not found",
+			"path":    c.Path(),
+		})
+	})
 
 	app.Listen(":8000")
 
