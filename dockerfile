@@ -41,7 +41,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
 
 # Production stage
-+FROM alpine:3.19 AS production
+FROM alpine:3.19 AS production
 
 RUN apk --no-cache add ca-certificates tzdata
 RUN adduser -D appuser
