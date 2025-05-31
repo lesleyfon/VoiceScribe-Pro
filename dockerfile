@@ -9,9 +9,10 @@ WORKDIR /app
 
 # Copy go mod files
 COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
+# Use cache for go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+  --mount=type=cache,target=/root/.cache/go-build \
+  go mod download
 
 # Copy the rest of the application
 COPY . .
@@ -38,12 +39,13 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
+# Reduce the size of the binary by stripping debug symbols "-ldflags="-s -w""
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o server ./cmd/server
 
 # Production stage
 FROM alpine:3.19 AS production
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata wget
 RUN adduser -D appuser
 
 WORKDIR /app
@@ -54,5 +56,9 @@ COPY --from=builder /app/server .
 USER appuser
 
 EXPOSE 8000
+
+# Add healthcheck here
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s \
+  CMD wget -qO- http://localhost:8000/health || exit 1
 
 CMD ["./server"]
