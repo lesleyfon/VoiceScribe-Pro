@@ -15,7 +15,7 @@ Organizations lose valuable information and context from meetings due to incompl
 
 ## Tech Stack
 **Frontend:**
-- Next.js 14 with Server Components
+- Next.js 15 with Server Components
 - TailwindCSS
 - WebSocket for real-time features
 
@@ -68,6 +68,10 @@ graph TD
 ### Backend (Fiber + Go)
 - **Main Tech:** [Fiber (Go)](https://gofiber.io/), PostgreSQL, Redis, Docker
 - **Requirements:** Docker, Docker Compose, Go (for local dev)
+  - **Environment Variables:** Ensure the following are set or provided via a `.env` file:
+    - `CLERK_SECRET_KEY`
+    - `DATABASE_URL`
+    - `REDIS_URL`
 
 #### Using Makefile (Recommended)
 - **Build Docker image:**
@@ -103,7 +107,7 @@ export DOCKER_BUILDKIT=1
 If you use the provided `Makefile`, BuildKit will be required for the `make build` and `make dev` commands.
 
 ### Frontend (Next.js 15 + TailwindCSS)
-- **Main Tech:** [Next.js 15](https://nextjs.org/), React 19, TailwindCSS 4, Clerk Auth, Radix UI
+- **Main Tech:** [Next.js 15](https://nextjs.org/), React 19, TailwindCSS 4, Clerk Auth, Shadcn UI
 - **Requirements:** Node.js (v20+), Yarn or npm
 
 #### Local Development
