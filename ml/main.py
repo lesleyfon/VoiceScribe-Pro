@@ -1,0 +1,95 @@
+from fastapi import FastAPI, File
+from transformers import WhisperProcessor, WhisperForConditionalGeneration
+import io
+import librosa
+import time
+import numpy as np
+
+
+
+
+# processor = WhisperProcessor.from_pretrained("openai/whisper-small")
+# model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")  # fastest for some reason
+# model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-large-v2")
+# model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")
+
+
+app = FastAPI()
+processor = WhisperProcessor.from_pretrained("openai/whisper-base")
+model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base")  # fastest for some reason
+
+
+CHUNK_LENGTH_SAMPLES = 30 * 16000  # 30 seconds
+CHUNK_OVERLAP_SAMPLES = 5 * 16000  # 5 seconds
+
+def chunk_audio(audio_array, chunk_size, overlap):
+    chunks = []
+    start = 0
+    while start < len(audio_array):
+        end = min(start + chunk_size, len(audio_array))
+        chunks.append(audio_array[start:end])
+        if end == len(audio_array):
+            break
+        start += chunk_size - overlap
+    return chunks
+
+
+
+@app.get('/')
+def read_root():
+  return {"Well": "Come"}
+
+@app.post('/process-audio')
+async def process_audio(audio_file: bytes = File()):
+    start_time = time.time()
+    audio_array, sample_rate = librosa.load(
+        io.BytesIO(audio_file), 
+        sr=16000
+    )
+    print("Array length:", len(audio_array), "Sample rate:", sample_rate)
+    print("Duration (s):", len(audio_array) / sample_rate)
+    if len(audio_array) == 0:
+        return "No Audio detected"
+
+    # Chunk the audio
+    chunks = chunk_audio(audio_array, CHUNK_LENGTH_SAMPLES, CHUNK_OVERLAP_SAMPLES)
+    transcriptions = []
+
+    for chunk in chunks:
+        inputs = processor(
+            chunk,
+            sampling_rate=sample_rate,
+            return_tensors="pt"
+        )
+        input_features = inputs.input_features
+        attention_mask = inputs.get("attention_mask", None)
+        if attention_mask is not None:
+            predicted_ids = model.generate(
+                input_features,
+                attention_mask=attention_mask,
+                task="transcribe",
+                language="en"
+            )
+        else:
+            predicted_ids = model.generate(
+                input_features,
+                task="transcribe",
+                language="en"
+            )
+        transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+        # Stream the response here
+        transcriptions.append(transcription)
+
+    full_transcription = " ".join(transcriptions)
+    end_time = time.time()
+    request_duration = end_time - start_time
+
+    return {"transcription": full_transcription, "request_duration": request_duration}
+
+
+# Instead of waiting for all the response to fullfil, try streaming the response chunks.
+
+# uvicorn main:app --host 0.0.0.0 --port 9090
+
+
+
