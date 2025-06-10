@@ -10,6 +10,8 @@
 
 # Test binary, built with `go test -c`
 *.test
+*.mp3
+*.mp4
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -73,3 +75,5 @@ next-env.d.ts
 
 # temp files
 tmp/
+
+__pycache__/
