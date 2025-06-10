@@ -17,7 +17,11 @@ func main() {
 	if err != nil {
 		log.Println("Error loading env variables")
 	}
-	app := fiber.New()
+	app := fiber.New(
+		fiber.Config{
+			BodyLimit: 200 * 1024 * 1024, // 10MB in bytes
+		},
+	)
 
 	var AllowOrigins = strings.Join([]string{"http://localhost:3000"}, ",")
 	var AllowHeaders = strings.Join([]string{"Origin, Content-Type, Accept, Authorization"}, ",")
@@ -47,6 +51,16 @@ func main() {
 
 	// Routes
 	routes.UserRoutes(app)
+	routes.ProcessAudioRoutes(app)
+
+	allRoutes := app.GetRoutes()
+
+	for _, route := range allRoutes {
+		if route.Path == "/" || route.Method == "HEAD" {
+			continue
+		}
+		log.Printf("Method: %s, Path: %s\n", route.Method, route.Path)
+	}
 
 	// Add fallback routes
 	app.Use(func(c *fiber.Ctx) error {
