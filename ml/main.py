@@ -4,34 +4,20 @@ import io
 import librosa
 import time
 import numpy as np
-
-
-
-
-# processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-# model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")  # fastest for some reason
-# model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-large-v2")
-# model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")
+from audio_chunking import router as audio_chunking_router
+from libs.chunk_audio import process_audio_array_to_chunks
 
 
 app = FastAPI()
+app.include_router(audio_chunking_router)
+
 processor = WhisperProcessor.from_pretrained("openai/whisper-base")
 model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base")  # fastest for some reason
 
 
 CHUNK_LENGTH_SAMPLES = 30 * 16000  # 30 seconds
-CHUNK_OVERLAP_SAMPLES = 5 * 16000  # 5 seconds
+CHUNK_OVERLAP_SAMPLES = 5 * 16000  # 5 seconds - the amo
 
-def chunk_audio(audio_array, chunk_size, overlap):
-    chunks = []
-    start = 0
-    while start < len(audio_array):
-        end = min(start + chunk_size, len(audio_array))
-        chunks.append(audio_array[start:end])
-        if end == len(audio_array):
-            break
-        start += chunk_size - overlap
-    return chunks
 
 
 
@@ -44,7 +30,8 @@ async def process_audio(audio_file: bytes = File()):
     start_time = time.time()
     audio_array, sample_rate = librosa.load(
         io.BytesIO(audio_file), 
-        sr=16000
+        sr=16000,
+        mono=True
     )
     print("Array length:", len(audio_array), "Sample rate:", sample_rate)
     print("Duration (s):", len(audio_array) / sample_rate)
@@ -52,7 +39,7 @@ async def process_audio(audio_file: bytes = File()):
         return "No Audio detected"
 
     # Chunk the audio
-    chunks = chunk_audio(audio_array, CHUNK_LENGTH_SAMPLES, CHUNK_OVERLAP_SAMPLES)
+    chunks = process_audio_array_to_chunks(audio_array, CHUNK_LENGTH_SAMPLES, CHUNK_OVERLAP_SAMPLES)
     transcriptions = []
 
     for chunk in chunks:
