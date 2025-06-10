@@ -56,7 +56,7 @@ Organizations lose valuable information and context from meetings due to incompl
 graph TD
     A[Web Client] --> B[Next.js Frontend]
     B --> C[Fiber Backend]
-    C --> D[HuggingFace Endpoints]
+    C --> D[FastAPI + HuggingFace Endpoints]
     C --> E[PostgreSQL + Vector Store]
     C --> F[Redis Cache]
     G[WebSocket Server] --> B
