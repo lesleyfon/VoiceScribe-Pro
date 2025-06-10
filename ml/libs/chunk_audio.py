@@ -6,7 +6,7 @@ import io
 CHUNK_LENGTH_SAMPLES = 30 * 16000  # 30 seconds
 CHUNK_OVERLAP_SAMPLES = 5 * 16000  # 5 seconds
 
-def process_chunk(audio_array, chunk_size, overlap):
+def process_audio_array_to_chunks(audio_array, chunk_size, overlap):
     chunks = []
     start = 0
     while start < len(audio_array):
@@ -39,7 +39,7 @@ def process_audio_file_audio_chunks(audio_file: bytes = File(), request_start_ti
     if len(audio_array) == 0:
         return [], None
     
-    audio_chunks = process_chunk( 
+    audio_chunks = process_audio_array_to_chunks( 
         audio_array, 
         CHUNK_LENGTH_SAMPLES, 
         CHUNK_OVERLAP_SAMPLES
