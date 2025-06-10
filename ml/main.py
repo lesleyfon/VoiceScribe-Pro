@@ -42,30 +42,41 @@ async def process_audio(audio_file: bytes = File()):
     chunks = process_audio_array_to_chunks(audio_array, CHUNK_LENGTH_SAMPLES, CHUNK_OVERLAP_SAMPLES)
     transcriptions = []
 
-    for chunk in chunks:
-        inputs = processor(
-            chunk,
-            sampling_rate=sample_rate,
-            return_tensors="pt"
-        )
-        input_features = inputs.input_features
-        attention_mask = inputs.get("attention_mask", None)
-        if attention_mask is not None:
-            predicted_ids = model.generate(
-                input_features,
-                attention_mask=attention_mask,
-                task="transcribe",
-                language="en"
+    for i, chunk in enumerate(chunks):
+        print(f"Transcribing chunk {i+1}/{len(chunks)}")
+        if len(chunk) == 0:
+            continue
+        try:
+            inputs = processor(
+                chunk,
+                sampling_rate=sample_rate,
+                return_tensors="pt"
             )
-        else:
-            predicted_ids = model.generate(
-                input_features,
-                task="transcribe",
-                language="en"
-            )
-        transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
-        # Stream the response here
-        transcriptions.append(transcription)
+            input_features = inputs.input_features
+            attention_mask = inputs.get("attention_mask", None)
+            
+            if attention_mask is not None:
+                predicted_ids = model.generate(
+                    input_features,
+                    attention_mask=attention_mask,
+                    task="transcribe",
+                    language="en"
+                )
+            else:
+                predicted_ids = model.generate(
+                    input_features,
+                    task="transcribe",
+                    language="en"
+                )
+            transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+            # Stream the response here
+            transcriptions.append(transcription)
+        except Exception e:
+            # Decide how to handle failed chunks, e.g., append a placeholder or skip
+            # For now, skipping failed chunks from the list to merge
+            print(f"Error transcribing chunk {i+1}: {str(e)}")
+            
+        
 
     full_transcription = " ".join(transcriptions)
     end_time = time.time()
