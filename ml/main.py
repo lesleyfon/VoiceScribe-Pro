@@ -1,11 +1,13 @@
+import io
+import time
+import json
+import librosa
+
 from fastapi import FastAPI, File
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
-import io
-import librosa
-import time
-import numpy as np
 from audio_chunking import router as audio_chunking_router
 from libs.chunk_audio import process_audio_array_to_chunks
+from sse_starlette import EventSourceResponse
 
 
 app = FastAPI()
@@ -17,8 +19,6 @@ model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-base")  
 
 CHUNK_LENGTH_SAMPLES = 30 * 16000  # 30 seconds
 CHUNK_OVERLAP_SAMPLES = 5 * 16000  # 5 seconds - the amo
-
-
 
 
 @app.get('/')
@@ -71,7 +71,7 @@ async def process_audio(audio_file: bytes = File()):
             transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
             # Stream the response here
             transcriptions.append(transcription)
-        except Exception e:
+        except Exception as e:
             # Decide how to handle failed chunks, e.g., append a placeholder or skip
             # For now, skipping failed chunks from the list to merge
             print(f"Error transcribing chunk {i+1}: {str(e)}")
@@ -85,6 +85,46 @@ async def process_audio(audio_file: bytes = File()):
     return {"transcription": full_transcription, "request_duration": request_duration}
 
 
+chunk_of_text = "Esse et amet elit exercitation esse quis. Adipisicing do et consequat sint fugiat aliqua exercitation ad anim ut pariatur nulla. Aute et magna ipsum aliqua tempor voluptate quis in consequat deserunt.".split(" ")
+
+
+
+def fake_streamer():
+    try:
+        full_response = ""
+        for i, text_chunk in enumerate(chunk_of_text):
+            full_response = full_response + " " + text_chunk
+            yield {
+                "data": json.dumps(
+                    {
+                        "code": 200,
+                        "message": full_response.strip()
+                    }
+                )
+            }
+            time.sleep(0.1)
+        yield {
+            "event": "complete",
+            "data": json.dumps({
+                "status": "finished",  
+                "message": full_response.strip()
+            })
+        }
+    except Exception as e:
+        yield {
+            "event": "error",
+            "data": json.dumps(
+                {
+                    "status": 500,
+                    "message": "internal server error",
+                    "error": e
+                }
+            )
+        }
+
+@app.get('/stream-response')
+def stream_responses():
+    return EventSourceResponse(fake_streamer())
 # Instead of waiting for all the response to fullfil, try streaming the response chunks.
 
 # uvicorn main:app --host 0.0.0.0 --port 9090
