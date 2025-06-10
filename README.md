@@ -73,6 +73,7 @@ graph TD
     - `CLERK_SECRET_KEY`
     - `DATABASE_URL`
     - `REDIS_URL`
+    - `INTERNAL_LOCAL_DOCKER_URL_BASE_PATH`
 
 #### Using Makefile (Recommended)
 - **Build Docker image:**
