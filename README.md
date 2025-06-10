@@ -60,6 +60,7 @@ graph TD
     C --> E[PostgreSQL + Vector Store]
     C --> F[Redis Cache]
     G[WebSocket Server] --> B
+    C[Fiber Backend] --> B
     C --> G
 ```
 
