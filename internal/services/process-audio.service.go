@@ -47,7 +47,7 @@ func ProcessAudio(audioData []byte) (*TranscriptionResponse, error) {
 	log.Println("DOCKER_URL_BASE_PATH", DOCKER_URL_BASE_PATH)
 
 	// Make a request to python ml service
-	request, err := http.NewRequest("POST", DOCKER_URL_BASE_PATH+"/process-audio/transcribe", body)
+	request, err := http.NewRequest("POST", DOCKER_URL_BASE_PATH+"/process-audio", body)
 
 	if err != nil {
 		return nil, err
