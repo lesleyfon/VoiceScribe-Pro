@@ -12,8 +12,8 @@ export default function Nav() {
 		// TODO: delete me
 		const getData = async () => {
 			try {
-				const token = await getToken();
-				console.log(token);
+				const token = await getToken({ template: "App-Template" });
+				console.log({ token });
 				const response = await fetch("http://127.0.0.1:8000/user-info", {
 					headers: {
 						Authorization: `Bearer ${token}`,
