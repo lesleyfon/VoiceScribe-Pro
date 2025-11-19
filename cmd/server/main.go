@@ -8,6 +8,7 @@ import (
 	"voicescribe-pro/internal/api/routes"
 	"voicescribe-pro/internal/db"
 
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -77,6 +78,38 @@ func main() {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"notes": notes})
 	})
 	app.Use(middlewares.Authenticate())
+
+	// Websocket request
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+
+	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
+		// Handle incoming messages
+		for {
+			_, msg, err := c.ReadMessage()
+			if err != nil {
+				log.Println("read error:", err)
+				break
+			}
+
+			log.Printf("Received: %s", msg)
+
+			// Send JSON response
+			response := map[string]string{
+				"pong": "pong",
+			}
+
+			if err := c.WriteJSON(response); err != nil {
+				log.Println("write error:", err)
+				break
+			}
+		}
+	}))
 
 	// Routes
 	routes.UserRoutes(app)
