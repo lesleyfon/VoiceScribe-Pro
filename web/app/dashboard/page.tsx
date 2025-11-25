@@ -1,4 +1,5 @@
 import Nav from "@/app/components/nav";
+import AudioRecorder from "@/components/ui/audio-recorder";
 
 export default async function Dashboard() {
 	return (
@@ -9,6 +10,7 @@ export default async function Dashboard() {
 					<header className="flex justify-end items-center p-4 gap-4 h-16">
 						Dashboard
 					</header>
+					<AudioRecorder />
 				</main>
 			</div>
 		</>
