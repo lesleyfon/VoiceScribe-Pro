@@ -12,7 +12,7 @@ export default function AudioRecorder() {
 	const audioUrlRef = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (window === undefined) return;
+		if (typeof window === "undefined") return;
 
 		(async () => {
 			if (!navigator?.mediaDevices) {
