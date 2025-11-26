@@ -1,20 +1,72 @@
 "use client";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@clerk/nextjs";
+import { MicIcon, MicOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 export default function AudioRecorder() {
+	const { getToken } = useAuth();
+
 	const [mediaRecorder, setMediaRecorder] = useState<null | MediaRecorder>();
+
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
+	const [isConnected, setIsConnected] = useState(false);
 
+	const socketRef = useRef<WebSocket | null>(null);
 	const audioRef = useRef(null);
 	const streamRef = useRef<MediaStream | null>(null);
 	const chunksRef = useRef<Blob[]>([]);
 	const audioUrlRef = useRef<string | null>(null);
 
 	useEffect(() => {
+		const setupWebSocket = async () => {
+			const token = await getToken({ template: "App-Template" });
+
+			// Use native WebSocket with token in query param or subprotocol
+			// Option 1: Query parameter
+			socketRef.current = new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`);
+
+			const socket = socketRef.current;
+
+			socket.onopen = () => {
+				console.log("WebSocket connected");
+				setIsConnected(true);
+			};
+
+			socket.onmessage = (event) => {
+				console.log("Message from server:", event.data);
+				try {
+					const data = JSON.parse(event.data);
+					console.log("Parsed data:", data);
+				} catch {
+					console.log("Raw data:", event.data);
+				}
+			};
+
+			socket.onerror = (error) => {
+				console.error("WebSocket error:", error);
+				setIsConnected(false);
+			};
+
+			socket.onclose = (event) => {
+				console.log("WebSocket closed:", event.code, event.reason);
+				setIsConnected(false);
+			};
+		};
+
+		setupWebSocket();
+
+		return () => {
+			if (socketRef.current) {
+				socketRef.current.close();
+			}
+		};
+	}, [getToken]);
+
+	useEffect(() => {
 		if (typeof window === "undefined") return;
 
-		(async () => {
+		const setupMediaRecorder = async () => {
 			if (!navigator?.mediaDevices) {
 				setError("getUserMedia not supported on your browser!");
 				return;
@@ -68,7 +120,8 @@ export default function AudioRecorder() {
 					}`
 				);
 			}
-		})();
+		};
+		setupMediaRecorder();
 
 		return () => {
 			if (streamRef.current) {
@@ -90,54 +143,70 @@ export default function AudioRecorder() {
 	};
 
 	const handleStop = () => {
+		if (socketRef.current?.readyState === WebSocket.OPEN) {
+			socketRef.current.send(
+				JSON.stringify({
+					ping: "ping",
+				})
+			);
+		}
+
 		if (!mediaRecorder) return;
 		mediaRecorder.stop();
 		setIsRecording(false);
 	};
 
+	const sendMessage = (message: string) => {
+		if (socketRef.current?.readyState === WebSocket.OPEN) {
+			socketRef.current.send(message);
+			console.log("Sent:", message);
+		} else {
+			console.error("WebSocket is not connected");
+		}
+	};
+
 	if (error) {
 		return (
-			<article className="text-red-600">
-				<p>Error: {error}</p>
-			</article>
+			<>
+				<article className="text-red-600">
+					<p>Error: {error}</p>
+				</article>
+			</>
 		);
 	}
 	return (
 		<>
 			<article>
-				<audio controls ref={audioRef} className="mb-4">
-					<track
-						kind="captions"
-						src="/captions.vtt"
-						srcLang="en"
-						label="English captions"
-						default
-					/>
-				</audio>
+				{/* biome-ignore lint/a11y/useMediaCaption: <explanation> */}
+				<audio controls ref={audioRef} className="mb-4" />
 				<p>Your Clip name</p>
 				<div className=" flex w-[300px] justify-between">
 					<button
 						type="button"
 						className={cn(
-							"cursor-pointer bg-[#2288CC] px-10 py-3 transition-colors",
+							"cursor-pointer bg-[#2288CC] px-10 py-3 transition-colors flex justify-center align-middle content-center ",
 							"disabled:cursor-not-allowed disabled:opacity-50",
 							isRecording && "bg-red-600"
 						)}
 						onClick={handleRecord}
 					>
-						{isRecording ? "Recording..." : "Record"}
+						<div className="mr-0.5">{isRecording ? "Recording..." : "Record"}</div>
+						<MicIcon />
 					</button>
 					<button
 						type="button"
 						className={cn(
-							"cursor-pointer bg-[#2288CC] px-10 py-3 transition-colors",
+							"cursor-pointer bg-[#2288CC] px-10 py-3 transition-colors flex justify-center align-middle content-center ",
 							"disabled:cursor-not-allowed disabled:opacity-50"
 						)}
 						onClick={handleStop}
 					>
-						Stop
+						<div className="mr-0.5">Stop</div> <MicOff />
 					</button>
 				</div>
+				<button onClick={() => sendMessage("Message from click me button")} type="button">
+					Click me
+				</button>
 			</article>
 		</>
 	);
