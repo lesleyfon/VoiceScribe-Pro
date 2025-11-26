@@ -1,67 +1,27 @@
 "use client";
+import { useSocket } from "@/hooks/use-sockets";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@clerk/nextjs";
 import { MicIcon, MicOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 export default function AudioRecorder() {
-	const { getToken } = useAuth();
-
 	const [mediaRecorder, setMediaRecorder] = useState<null | MediaRecorder>();
 
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
-	const [isConnected, setIsConnected] = useState(false);
 
-	const socketRef = useRef<WebSocket | null>(null);
 	const audioRef = useRef(null);
 	const streamRef = useRef<MediaStream | null>(null);
 	const chunksRef = useRef<Blob[]>([]);
 	const audioUrlRef = useRef<string | null>(null);
 
-	useEffect(() => {
-		const setupWebSocket = async () => {
-			const token = await getToken({ template: "App-Template" });
-
-			// Use native WebSocket with token in query param or subprotocol
-			// Option 1: Query parameter
-			socketRef.current = new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`);
-
-			const socket = socketRef.current;
-
-			socket.onopen = () => {
-				console.log("WebSocket connected");
-				setIsConnected(true);
-			};
-
-			socket.onmessage = (event) => {
-				console.log("Message from server:", event.data);
-				try {
-					const data = JSON.parse(event.data);
-					console.log("Parsed data:", data);
-				} catch {
-					console.log("Raw data:", event.data);
-				}
-			};
-
-			socket.onerror = (error) => {
-				console.error("WebSocket error:", error);
-				setIsConnected(false);
-			};
-
-			socket.onclose = (event) => {
-				console.log("WebSocket closed:", event.code, event.reason);
-				setIsConnected(false);
-			};
-		};
-
-		setupWebSocket();
-
-		return () => {
-			if (socketRef.current) {
-				socketRef.current.close();
-			}
-		};
-	}, [getToken]);
+	const { socket, emit } = useSocket({
+		url: "ws://127.0.0.1:8000/ws", // TODO: WE DONT NEED THIS. THIS SHOULD BE READ FROM AN ENV FILE
+		onConnect: () => console.log("Connected!"),
+		onDisconnect: (reason) => console.log("Disconnected:", reason),
+		onError: (err) => console.error("Socket error:", err),
+		onAuthSuccess: () => console.log("Authenticated!"),
+		onAuthError: (err) => console.error("Auth failed:", err),
+	});
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -143,22 +103,14 @@ export default function AudioRecorder() {
 	};
 
 	const handleStop = () => {
-		if (socketRef.current?.readyState === WebSocket.OPEN) {
-			socketRef.current.send(
-				JSON.stringify({
-					ping: "ping",
-				})
-			);
-		}
-
 		if (!mediaRecorder) return;
 		mediaRecorder.stop();
 		setIsRecording(false);
 	};
 
 	const sendMessage = (message: string) => {
-		if (socketRef.current?.readyState === WebSocket.OPEN) {
-			socketRef.current.send(message);
+		if (socket?.readyState === WebSocket.OPEN) {
+			emit("ON_CLICK_EVENT", message);
 			console.log("Sent:", message);
 		} else {
 			console.error("WebSocket is not connected");
