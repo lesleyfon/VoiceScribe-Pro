@@ -5,7 +5,6 @@ import { MicIcon, MicOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 export default function AudioRecorder() {
 	const [mediaRecorder, setMediaRecorder] = useState<null | MediaRecorder>();
-
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -14,7 +13,7 @@ export default function AudioRecorder() {
 	const chunksRef = useRef<Blob[]>([]);
 	const audioUrlRef = useRef<string | null>(null);
 
-	const { socket, emit } = useSocket({
+	const { error: socketError } = useSocket({
 		url: "ws://127.0.0.1:8000/ws", // TODO: WE DONT NEED THIS. THIS SHOULD BE READ FROM AN ENV FILE
 		onConnect: () => console.log("Connected!"),
 		onDisconnect: (reason) => console.log("Disconnected:", reason),
@@ -24,6 +23,7 @@ export default function AudioRecorder() {
 	});
 
 	useEffect(() => {
+		//TODO: Move this into a hook
 		if (typeof window === "undefined") return;
 
 		const setupMediaRecorder = async () => {
@@ -108,20 +108,11 @@ export default function AudioRecorder() {
 		setIsRecording(false);
 	};
 
-	const sendMessage = (message: string) => {
-		if (socket?.readyState === WebSocket.OPEN) {
-			emit("ON_CLICK_EVENT", message);
-			console.log("Sent:", message);
-		} else {
-			console.error("WebSocket is not connected");
-		}
-	};
-
-	if (error) {
+	if (error || socketError) {
 		return (
 			<>
 				<article className="text-red-600">
-					<p>Error: {error}</p>
+					<p>Error: {error ?? socketError}</p>
 				</article>
 			</>
 		);
@@ -131,15 +122,15 @@ export default function AudioRecorder() {
 			<article>
 				{/* biome-ignore lint/a11y/useMediaCaption: <explanation> */}
 				<audio controls ref={audioRef} className="mb-4" />
-				<p>Your Clip name</p>
 				<div className=" flex w-[300px] justify-between">
 					<button
 						type="button"
 						className={cn(
-							"cursor-pointer bg-[#2288CC] px-10 py-3 transition-colors flex justify-center align-middle content-center ",
+							"cursor-pointer bg-[#2288CC]  py-3 transition-colors flex justify-center align-middle content-center flex-[0.4]",
 							"disabled:cursor-not-allowed disabled:opacity-50",
 							isRecording && "bg-red-600"
 						)}
+						disabled={isRecording}
 						onClick={handleRecord}
 					>
 						<div className="mr-0.5">{isRecording ? "Recording..." : "Record"}</div>
@@ -148,7 +139,7 @@ export default function AudioRecorder() {
 					<button
 						type="button"
 						className={cn(
-							"cursor-pointer bg-[#2288CC] px-10 py-3 transition-colors flex justify-center align-middle content-center ",
+							"cursor-pointer bg-[#2288CC]  py-3 transition-colors flex justify-center align-middle content-center flex-[0.4]",
 							"disabled:cursor-not-allowed disabled:opacity-50"
 						)}
 						onClick={handleStop}
@@ -156,9 +147,6 @@ export default function AudioRecorder() {
 						<div className="mr-0.5">Stop</div> <MicOff />
 					</button>
 				</div>
-				<button onClick={() => sendMessage("Message from click me button")} type="button">
-					Click me
-				</button>
 			</article>
 		</>
 	);

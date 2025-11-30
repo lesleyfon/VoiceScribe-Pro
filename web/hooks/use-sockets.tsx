@@ -21,6 +21,7 @@ export function useSocket({ onConnect, onDisconnect, onError }: UseSocketOptions
 	const [isConnected, setIsConnected] = useState<boolean>(false);
 	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
+
 	const WS_URL = "ws://127.0.0.1:8000/ws";
 
 	useEffect(() => {
@@ -186,12 +187,12 @@ export function useSocket({ onConnect, onDisconnect, onError }: UseSocketOptions
 	};
 	return {
 		socket: socketRef.current,
-		isConnected,
 		isAuthenticated,
+		isConnected,
 		error,
+		close,
 		emit,
 		off,
-		close,
 		on,
 	};
 }
