@@ -1,7 +1,24 @@
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 
-type MessageHandler = (...args: unknown[]) => void;
+type MessageHandler = (data: { text: string; isFinal: boolean }, ...args: unknown[]) => void;
+
+export type MimeType = "audio/webm" | "audio/ogg" | "audio/wav";
+
+export type AudioChunkType = {
+	/**
+	 * Base64-encoded audio data
+	 */
+	audio?: string;
+	/**
+	 * MIME type of the audio data
+	 */
+	mimeType?: "audio/webm" | "audio/ogg" | "audio/wav" | string;
+	/**
+	 * WebSocket event type identifier
+	 */
+	type: "audio_chunk" | "audio_start" | "audio_end";
+};
 
 interface UseSocketOptions {
 	url: string;
@@ -12,14 +29,14 @@ interface UseSocketOptions {
 	onAuthError?: (error: string) => void;
 }
 export function useSocket({ onConnect, onDisconnect, onError }: UseSocketOptions) {
-	const { getToken } = useAuth();
+	const { getToken, isSignedIn } = useAuth();
 
 	const socketRef = useRef<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const eventHandlersRef = useRef<Map<string, Set<MessageHandler>>>(new Map());
 
 	const [isConnected, setIsConnected] = useState<boolean>(false);
-	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!isSignedIn);
 	const [error, setError] = useState<string | null>(null);
 
 	const WS_URL = "ws://127.0.0.1:8000/ws";
@@ -138,7 +155,8 @@ export function useSocket({ onConnect, onDisconnect, onError }: UseSocketOptions
 		};
 	}, [getToken, onConnect, onDisconnect, onError]);
 
-	type DataType = string | ArrayBufferLike | Blob | ArrayBufferView<ArrayBufferLike>;
+	type DataType = string | AudioChunkType;
+
 	const emit = (event: string, data?: DataType) => {
 		if (socketRef.current?.readyState === WebSocket.OPEN) {
 			const message: { type: string; data?: DataType } = {
@@ -155,6 +173,8 @@ export function useSocket({ onConnect, onDisconnect, onError }: UseSocketOptions
 			console.warn("WebSocket is not connected. Cannot send message.");
 		}
 	};
+
+	const send = emit;
 
 	const off = (event: string, handler?: MessageHandler) => {
 		if (!handler) {
@@ -192,6 +212,7 @@ export function useSocket({ onConnect, onDisconnect, onError }: UseSocketOptions
 		error,
 		close,
 		emit,
+		send,
 		off,
 		on,
 	};
