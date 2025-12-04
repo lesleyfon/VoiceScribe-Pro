@@ -2,35 +2,10 @@
 
 import { SignedIn, UserButton, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 export default function Nav() {
-	const { isSignedIn, getToken } = useAuth();
+	const { isSignedIn } = useAuth();
 	const router = useRouter();
-
-	useEffect(() => {
-		// TODO: delete me
-		const getData = async () => {
-			try {
-				const token = await getToken({ template: "App-Template" });
-				console.log({ token });
-				const response = await fetch("http://127.0.0.1:8000/user-info", {
-					headers: {
-						Authorization: `Bearer ${token}`,
-						"Content-Type": "application/json",
-					},
-				});
-				if (!response.ok) {
-					throw new Error("API BOMBED");
-				}
-				const data = await response.json();
-				console.log({ data });
-			} catch (e) {
-				throw new Error(e as string);
-			}
-		};
-		getData();
-	}, [getToken]);
 
 	if (!isSignedIn) {
 		router.push("/auth");
